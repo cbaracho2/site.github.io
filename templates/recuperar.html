@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Recuperar Senha{% endblock %}
+
+{% block auth_content %}
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0110 0v4"/>
+                </svg>
+            </div>
+            <h1>Recuperar Senha</h1>
+            <p>Informe seu email para recuperacao</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} mb-2">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('login_bp.recuperar') }}">
+            <div class="form-group">
+                <label for="email">Email cadastrado</label>
+                <input type="email" id="email" name="email" class="form-control" placeholder="seu@email.com" required autofocus>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block btn-lg mt-2">Recuperar</button>
+        </form>
+
+        <div class="auth-footer">
+            <a href="{{ url_for('login_bp.login') }}">Voltar ao login</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

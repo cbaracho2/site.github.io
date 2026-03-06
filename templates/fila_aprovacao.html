@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Fila de Aprovacao{% endblock %}
+
+{% block content %}
+<div class="d-flex align-center justify-between mb-2">
+    <h1>Fila de Aprovacao</h1>
+    {% if pendentes_count > 0 %}
+    <span class="badge badge-warning" style="font-size: 0.85rem; padding: 6px 16px;">
+        {{ pendentes_count }} pendente{{ 's' if pendentes_count > 1 }}
+    </span>
+    {% endif %}
+</div>
+
+<!-- Status Filter Tabs -->
+<div class="tabs mb-2">
+    <a href="{{ url_for('emp_bp.fila_aprovacao', status='pendente') }}"
+       class="tab {{ 'active' if status_filter == 'pendente' }}">Pendentes</a>
+    <a href="{{ url_for('emp_bp.fila_aprovacao', status='aprovada') }}"
+       class="tab {{ 'active' if status_filter == 'aprovada' }}">Aprovadas</a>
+    <a href="{{ url_for('emp_bp.fila_aprovacao', status='rejeitada') }}"
+       class="tab {{ 'active' if status_filter == 'rejeitada' }}">Rejeitadas</a>
+    <a href="{{ url_for('emp_bp.fila_aprovacao', status='todos') }}"
+       class="tab {{ 'active' if status_filter == 'todos' }}">Todos</a>
+</div>
+
+{% if simulacoes %}
+<div class="card">
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Codigo</th>
+                    <th>Corretor</th>
+                    <th>Empreendimento</th>
+                    <th>Unidade</th>
+                    <th>VP Proposta</th>
+                    <th>Dif %</th>
+                    <th>Status</th>
+                    <th>Data</th>
+                    <th>Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for s in simulacoes %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('emp_bp.report', id=s.id) }}">
+                            <strong>{{ s.codigo }}</strong>
+                        </a>
+                    </td>
+                    <td>{{ s.corretor.nome }}</td>
+                    <td>{{ s.empreendimento.nome }}</td>
+                    <td>{{ s.unidade.bloco.nome }} - {{ s.unidade.numero }}</td>
+                    <td>{{ format_brl(s.vp_proposta) }}</td>
+                    <td>{{ format_pct(s.dif_pct_proposta) }}</td>
+                    <td><span class="badge status-{{ s.status }}">{{ s.status }}</span></td>
+                    <td>{{ s.created_at.strftime('%d/%m/%Y') }}</td>
+                    <td>
+                        {% if s.status == 'pendente' %}
+                        <div class="btn-group">
+                            <form method="POST" action="{{ url_for('emp_bp.aprovar_simulacao', id=s.id) }}" style="display:inline;">
+                                <button type="submit" class="btn btn-success btn-sm">Aprovar</button>
+                            </form>
+                            <button type="button" class="btn btn-danger btn-sm"
+                                    onclick="openRejectModal({{ s.id }}, '{{ s.codigo }}')">Rejeitar</button>
+                        </div>
+                        {% else %}
+                            {% if s.aprovador %}
+                            <small class="text-muted">{{ s.aprovador.nome }}</small>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9 11l3 3L22 4"/>
+            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+        </svg>
+        <p>Nenhuma simulacao {{ status_filter if status_filter != 'todos' else '' }} encontrada.</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Rejection Modal -->
+<div class="modal-overlay" id="rejectModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Rejeitar Simulacao</h3>
+            <button class="alert-close" onclick="closeRejectModal()">&times;</button>
+        </div>
+        <form method="POST" id="rejectForm">
+            <div class="modal-body">
+                <p class="mb-2">Simulacao: <strong id="rejectCodigo"></strong></p>
+                <div class="form-group">
+                    <label>Motivo da Rejeicao</label>
+                    <textarea name="motivo" class="form-control" rows="3" placeholder="Informe o motivo da rejeicao..." required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeRejectModal()">Cancelar</button>
+                <button type="submit" class="btn btn-danger">Confirmar Rejeicao</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openRejectModal(id, codigo) {
+    document.getElementById('rejectModal').classList.add('active');
+    document.getElementById('rejectCodigo').textContent = codigo;
+    document.getElementById('rejectForm').action = '/simulador/fila/' + id + '/rejeitar';
+}
+
+function closeRejectModal() {
+    document.getElementById('rejectModal').classList.remove('active');
+}
+
+// Close modal on overlay click
+document.getElementById('rejectModal').addEventListener('click', function(e) {
+    if (e.target === this) closeRejectModal();
+});
+</script>
+{% endblock %}

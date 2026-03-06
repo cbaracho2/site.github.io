@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}Relatorio - {{ sim.codigo }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-center justify-between mb-2">
+    <div>
+        <h1>Relatorio da Simulacao</h1>
+        <p class="text-secondary">Codigo: <strong>{{ sim.codigo }}</strong></p>
+    </div>
+    <span class="badge status-{{ sim.status }}" style="font-size: 0.85rem; padding: 6px 16px;">
+        {{ sim.status | upper }}
+    </span>
+</div>
+
+<!-- Unit Info -->
+<div class="unit-card mb-2">
+    <div class="unit-title">{{ sim.empreendimento.nome }} - {{ sim.unidade.bloco.nome }} - Unidade {{ sim.unidade.numero }}</div>
+    <div class="unit-grid">
+        <div class="unit-item">
+            <label>Area Coberta</label>
+            <div class="value">{{ '%.2f'|format(sim.unidade.area_coberta) }} m2</div>
+        </div>
+        <div class="unit-item">
+            <label>Area Descoberta</label>
+            <div class="value">{{ '%.2f'|format(sim.unidade.area_descoberta) }} m2</div>
+        </div>
+        <div class="unit-item">
+            <label>Preco/m2</label>
+            <div class="value">{{ format_brl(sim.unidade.preco_m2) }}</div>
+        </div>
+        <div class="unit-item">
+            <label>Coef. Area Desc.</label>
+            <div class="value">{{ sim.unidade.coef_area_descoberta }}</div>
+        </div>
+    </div>
+    <div class="unit-total">
+        <label>Valor Total da Unidade</label>
+        <div class="price">{{ format_brl(sim.unidade.valor_total) }}</div>
+    </div>
+</div>
+
+{% if sim.cliente_nome %}
+<div class="card mb-2">
+    <div class="card-body d-flex gap-md">
+        <div><strong>Cliente:</strong> {{ sim.cliente_nome }}</div>
+        {% if sim.cliente_telefone %}
+        <div><strong>Tel:</strong> {{ sim.cliente_telefone }}</div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- ═══ COMPARISON TABLE ═══ -->
+<div class="card mb-2">
+    <div class="card-header"><h3>Comparativo Tabela x Proposta</h3></div>
+    <div class="card-body">
+        <div class="table-responsive comparison-table">
+            <table>
+                <thead>
+                    <tr><th class="label-col"></th><th>Tabela</th><th>Proposta</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="label-col">Valor Nominal</td>
+                        <td>{{ format_brl(sim.valor_nominal_tabela) }}</td>
+                        <td>{{ format_brl(sim.valor_nominal_proposta) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Valor Presente (VP)</td>
+                        <td><strong>{{ format_brl(sim.vp_tabela) }}</strong></td>
+                        <td><strong>{{ format_brl(sim.vp_proposta) }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Diferenca (%)</td>
+                        <td>{{ format_pct(sim.dif_pct_tabela) }}</td>
+                        <td>{{ format_pct(sim.dif_pct_proposta) }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ PAYMENT PLAN SUMMARY ═══ -->
+<div class="card mb-2">
+    <div class="card-header"><h3>Plano de Pagamento (Proposta)</h3></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr><th>Tipo</th><th>Qtd</th><th>Valor Unit.</th><th>Total</th><th>Inicio</th></tr>
+                </thead>
+                <tbody>
+                    {% if sim.sinal_qtd and sim.sinal_valor %}
+                    <tr>
+                        <td><strong>Sinal</strong></td>
+                        <td>{{ sim.sinal_qtd }}x</td>
+                        <td>{{ format_brl(sim.sinal_valor) }}</td>
+                        <td>{{ format_brl(sim.sinal_qtd * sim.sinal_valor) }}</td>
+                        <td>{{ sim.sinal_data_inicio.strftime('%d/%m/%Y') if sim.sinal_data_inicio else '-' }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if sim.mensal_qtd and sim.mensal_valor %}
+                    <tr>
+                        <td><strong>Mensal</strong></td>
+                        <td>{{ sim.mensal_qtd }}x</td>
+                        <td>{{ format_brl(sim.mensal_valor) }}</td>
+                        <td>{{ format_brl(sim.mensal_qtd * sim.mensal_valor) }}</td>
+                        <td>{{ sim.mensal_data_inicio.strftime('%d/%m/%Y') if sim.mensal_data_inicio else '-' }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if sim.intermediaria_qtd and sim.intermediaria_valor %}
+                    <tr>
+                        <td><strong>Intermediaria</strong> ({{ sim.intermediaria_periodicidade }})</td>
+                        <td>{{ sim.intermediaria_qtd }}x</td>
+                        <td>{{ format_brl(sim.intermediaria_valor) }}</td>
+                        <td>{{ format_brl(sim.intermediaria_qtd * sim.intermediaria_valor) }}</td>
+                        <td>{{ sim.intermediaria_data_inicio.strftime('%d/%m/%Y') if sim.intermediaria_data_inicio else '-' }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if sim.chave_valor %}
+                    <tr>
+                        <td><strong>Chave</strong></td>
+                        <td>1x</td>
+                        <td>{{ format_brl(sim.chave_valor) }}</td>
+                        <td>{{ format_brl(sim.chave_valor) }}</td>
+                        <td>{{ sim.chave_data.strftime('%d/%m/%Y') if sim.chave_data else '-' }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if sim.financiamento_valor %}
+                    <tr>
+                        <td><strong>Financiamento</strong></td>
+                        <td>1x</td>
+                        <td>{{ format_brl(sim.financiamento_valor) }}</td>
+                        <td>{{ format_brl(sim.financiamento_valor) }}</td>
+                        <td>{{ sim.financiamento_data.strftime('%d/%m/%Y') if sim.financiamento_data else '-' }}</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3"><strong>Total Nominal</strong></td>
+                        <td colspan="2"><strong>{{ format_brl(sim.valor_nominal_proposta) }}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ DETAILED PAYMENT SCHEDULE ═══ -->
+{% if sim.detalhes_json and sim.detalhes_json.proposta and sim.detalhes_json.proposta.detalhes %}
+<div class="card mb-2">
+    <div class="card-header"><h3>Fluxo de Pagamentos Detalhado (Proposta)</h3></div>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr><th>#</th><th>Data</th><th>Tipo</th><th>Valor</th><th>Meses</th><th>Fator</th><th>VP</th></tr>
+            </thead>
+            <tbody>
+            {% for p in sim.detalhes_json.proposta.detalhes %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ p.data }}</td>
+                    <td><span class="badge badge-info">{{ p.tipo }}</span></td>
+                    <td>{{ format_brl(p.valor) }}</td>
+                    <td>{{ p.meses }}</td>
+                    <td>{{ '%.4f'|format(p.fator) }}</td>
+                    <td><strong>{{ format_brl(p.vp) }}</strong></td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- ═══ APPROVAL INFO ═══ -->
+{% if sim.status != 'pendente' %}
+<div class="card mb-2">
+    <div class="card-body">
+        <strong>{{ 'Aprovado' if sim.status == 'aprovada' else 'Rejeitado' }} por:</strong>
+        {{ sim.aprovador.nome if sim.aprovador else '-' }}
+        em {{ sim.data_aprovacao.strftime('%d/%m/%Y %H:%M') if sim.data_aprovacao else '-' }}
+        {% if sim.motivo_rejeicao %}
+        <br><strong>Motivo:</strong> {{ sim.motivo_rejeicao }}
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- ═══ ACTIONS ═══ -->
+<div class="btn-group">
+    <a href="{{ url_for('emp_bp.editar_simulacao', id=sim.id) }}" class="btn btn-secondary">Editar</a>
+    <form method="POST" action="{{ url_for('emp_bp.deletar_simulacao', id=sim.id) }}" style="display:inline;">
+        <button type="submit" class="btn btn-danger" onclick="return confirm('Excluir esta simulacao?')">Excluir</button>
+    </form>
+    <a href="{{ url_for('emp_bp.minhas_simulacoes') }}" class="btn btn-secondary">Voltar</a>
+    <a href="{{ url_for('emp_bp.simulador') }}" class="btn btn-primary">Nova Simulacao</a>
+</div>
+
+<div class="mt-2 text-muted" style="font-size:0.8rem;">
+    Criado em {{ sim.created_at.strftime('%d/%m/%Y %H:%M') }} por {{ sim.corretor.nome }}
+    | Taxa: {{ '%.2f'|format(sim.empreendimento.taxa_desconto_mensal * 100) }}% a.m.
+</div>
+{% endblock %}

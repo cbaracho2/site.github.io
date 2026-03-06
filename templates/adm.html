@@ -1,0 +1,975 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Gerenciar' if not current_user.is_admin else 'Administracao' }}{% endblock %}
+
+{% block content %}
+<h1 class="mb-2">{{ 'Painel de Gestao' if not current_user.is_admin else 'Painel Administrativo' }}</h1>
+
+<!-- Tabs -->
+<div class="tabs">
+    {% if current_user.is_admin %}
+    <button class="tab active" data-tab="empresas">Empresas</button>
+    {% else %}
+    <button class="tab active" data-tab="empresa">Minha Empresa</button>
+    {% endif %}
+    <button class="tab" data-tab="empreendimentos">Empreendimentos</button>
+    <button class="tab" data-tab="blocos">Blocos/Unidades</button>
+    <button class="tab" data-tab="plano">Plano Padrao</button>
+    <button class="tab" data-tab="regras">Regras</button>
+    <button class="tab" data-tab="usuarios">Usuarios</button>
+</div>
+
+{% if current_user.is_admin %}
+<!-- TAB: EMPRESAS (admin only) -->
+<div class="tab-content active" data-tab-content="empresas">
+    <div class="card mb-2">
+        <div class="card-header"><h3>Nova Empresa</h3></div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('adm_bp.criar_empresa') }}">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nome</label>
+                        <input type="text" name="nome" class="form-control" placeholder="Nome da empresa" required>
+                    </div>
+                    <div class="form-group">
+                        <label>CNPJ</label>
+                        <input type="text" name="cnpj" class="form-control" placeholder="00.000.000/0001-00">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Cadastrar</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr><th>Nome</th><th>CNPJ</th><th>Acoes</th></tr>
+                </thead>
+                <tbody>
+                {% for emp in empresas %}
+                    <tr>
+                        <td><strong>{{ emp.nome }}</strong></td>
+                        <td>{{ emp.cnpj or '-' }}</td>
+                        <td>
+                            <button class="btn btn-secondary btn-sm" onclick="openEditEmpresa({{ emp.id }}, '{{ emp.nome }}', '{{ emp.cnpj or '' }}')">Editar</button>
+                            <form method="POST" action="{{ url_for('adm_bp.excluir_empresa', id=emp.id) }}" style="display:inline;">
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Desativar empresa?')">Desativar</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                {% if not empresas %}
+                    <tr><td colspan="3" class="text-center text-muted">Nenhuma empresa cadastrada</td></tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- TAB: MINHA EMPRESA (lider) -->
+<div class="tab-content active" data-tab-content="empresa">
+    {% set minha_empresa = empresas[0] if empresas else none %}
+    {% if minha_empresa %}
+    <div class="card">
+        <div class="card-header"><h3>{{ minha_empresa.nome }}</h3></div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('adm_bp.editar_empresa', id=minha_empresa.id) }}">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nome</label>
+                        <input type="text" name="nome" class="form-control" value="{{ minha_empresa.nome }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>CNPJ</label>
+                        <input type="text" name="cnpj" class="form-control" value="{{ minha_empresa.cnpj or '' }}">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Salvar Alteracoes</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- TAB: EMPREENDIMENTOS -->
+<div class="tab-content" data-tab-content="empreendimentos">
+    <div class="card mb-2">
+        <div class="card-header"><h3>Novo Empreendimento</h3></div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('adm_bp.criar_empreendimento') }}">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nome</label>
+                        <input type="text" name="nome" class="form-control" placeholder="Nome do empreendimento" required>
+                    </div>
+                    {% if current_user.is_admin %}
+                    <div class="form-group">
+                        <label>Empresa</label>
+                        <select name="empresa_id" class="form-control" required>
+                            <option value="">Selecione...</option>
+                            {% for emp in empresas %}
+                            <option value="{{ emp.id }}">{{ emp.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Endereco</label>
+                        <input type="text" name="endereco" class="form-control" placeholder="Endereco completo">
+                    </div>
+                    <div class="form-group">
+                        <label>Taxa Desconto Mensal</label>
+                        <input type="number" name="taxa_desconto_mensal" class="form-control" value="0.01" step="0.001" min="0" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Cadastrar</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr><th>Nome</th><th>Empresa</th><th>Taxa</th><th>Acoes</th></tr>
+                </thead>
+                <tbody>
+                {% for e in empreendimentos %}
+                    <tr>
+                        <td><strong>{{ e.nome }}</strong><br><small class="text-muted">{{ e.endereco or '' }}</small></td>
+                        <td>{{ e.empresa.nome }}</td>
+                        <td>{{ '%.2f'|format(e.taxa_desconto_mensal * 100) }}% a.m.</td>
+                        <td>
+                            <button class="btn btn-secondary btn-sm" onclick="openEditEmpreendimento({{ e.id }}, '{{ e.nome }}', '{{ e.endereco or '' }}', {{ e.empresa_id }}, {{ e.taxa_desconto_mensal }})">Editar</button>
+                            <form method="POST" action="{{ url_for('adm_bp.excluir_empreendimento', id=e.id) }}" style="display:inline;">
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Desativar?')">Desativar</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                {% if not empreendimentos %}
+                    <tr><td colspan="4" class="text-center text-muted">Nenhum empreendimento cadastrado</td></tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- TAB: BLOCOS/UNIDADES -->
+<div class="tab-content" data-tab-content="blocos">
+    <!-- Add Bloco -->
+    <div class="card mb-2">
+        <div class="card-header"><h3>Novo Bloco</h3></div>
+        <div class="card-body">
+            <form method="POST" id="formBloco">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Empreendimento</label>
+                        <select id="blocoEmpSelect" class="form-control" required>
+                            <option value="">Selecione...</option>
+                            {% for e in empreendimentos %}
+                            <option value="{{ e.id }}">{{ e.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nome do Bloco</label>
+                        <input type="text" name="nome" class="form-control" placeholder="Ex: Bloco A" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Criar Bloco</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Unidade Individual -->
+    <div class="card mb-2">
+        <div class="card-header"><h3>Nova Unidade</h3></div>
+        <div class="card-body">
+            <form method="POST" id="formUnidade">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Empreendimento</label>
+                        <select id="unidEmpSelect" class="form-control" required onchange="loadBlocosAdmin(this.value)">
+                            <option value="">Selecione...</option>
+                            {% for e in empreendimentos %}
+                            <option value="{{ e.id }}">{{ e.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Bloco</label>
+                        <select id="unidBlocoSelect" class="form-control" required>
+                            <option value="">Selecione empreendimento primeiro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Numero</label>
+                        <input type="text" name="numero" class="form-control" placeholder="Ex: 101" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Descricao</label>
+                        <input type="text" name="descricao" class="form-control" placeholder="Ex: 2Q Garden">
+                    </div>
+                </div>
+                <div class="form-row form-row-4">
+                    <div class="form-group">
+                        <label>Area Coberta (m2)</label>
+                        <input type="number" name="area_coberta" class="form-control" step="0.01" value="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Area Descoberta (m2)</label>
+                        <input type="number" name="area_descoberta" class="form-control" step="0.01" value="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Preco/m2 (R$)</label>
+                        <input type="number" name="preco_m2" class="form-control" step="0.01" value="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Coef. Area Desc.</label>
+                        <input type="number" name="coef_area_descoberta" class="form-control" step="0.01" value="0.5" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Criar Unidade</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Cadastro em Lote -->
+    <div class="card mb-2">
+        <div class="card-header"><h3>Cadastro em Lote</h3></div>
+        <div class="card-body">
+            <form method="POST" id="formUnidadeLote">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Empreendimento</label>
+                        <select id="loteEmpSelect" class="form-control" required onchange="loadBlocosLote(this.value)">
+                            <option value="">Selecione...</option>
+                            {% for e in empreendimentos %}
+                            <option value="{{ e.id }}">{{ e.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Bloco</label>
+                        <select id="loteBlocoSelect" class="form-control" required>
+                            <option value="">Selecione empreendimento primeiro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Numeros das Unidades</label>
+                    <input type="text" name="numeros" class="form-control" placeholder="Ex: 101-110 ou 101,102,201,202" required>
+                    <small class="text-muted">Use virgula para separar ou hifen para intervalo (ex: 101-110, 201-210)</small>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Descricao (todas)</label>
+                        <input type="text" name="descricao" class="form-control" placeholder="Ex: 2Q Suite">
+                    </div>
+                </div>
+                <div class="form-row form-row-4">
+                    <div class="form-group">
+                        <label>Area Coberta (m2)</label>
+                        <input type="number" name="area_coberta" class="form-control" step="0.01" value="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Area Descoberta (m2)</label>
+                        <input type="number" name="area_descoberta" class="form-control" step="0.01" value="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Preco/m2 (R$)</label>
+                        <input type="number" name="preco_m2" class="form-control" step="0.01" value="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Coef. Area Desc.</label>
+                        <input type="number" name="coef_area_descoberta" class="form-control" step="0.01" value="0.5" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Criar Unidades em Lote</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Importar CSV -->
+    <div class="card mb-2">
+        <div class="card-header"><h3>Importar Unidades via CSV</h3></div>
+        <div class="card-body">
+            <form method="POST" id="formUnidadeCSV" enctype="multipart/form-data">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Empreendimento</label>
+                        <select id="csvEmpSelect" class="form-control" required onchange="loadBlocosCSV(this.value)">
+                            <option value="">Selecione...</option>
+                            {% for e in empreendimentos %}
+                            <option value="{{ e.id }}">{{ e.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Bloco</label>
+                        <select id="csvBlocoSelect" class="form-control" required>
+                            <option value="">Selecione empreendimento primeiro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Arquivo CSV</label>
+                    <input type="file" name="arquivo_csv" class="form-control" accept=".csv" required>
+                    <small class="text-muted">
+                        Colunas aceitas: <strong>numero</strong>, descricao, area_coberta, area_descoberta, preco_m2, coef_area_descoberta, status<br>
+                        Separador: virgula ou ponto-e-virgula. Valores decimais aceitam formato brasileiro (ex: 6.500,00)
+                    </small>
+                </div>
+                <div class="d-flex align-center" style="gap:1rem;">
+                    <button type="submit" class="btn btn-primary btn-sm">Importar CSV</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="downloadCSVModelo()">Baixar Modelo CSV</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Existing Unidades -->
+    <div class="card">
+        <div class="card-header"><h3>Unidades Cadastradas</h3></div>
+        <div class="card-body">
+            <div class="form-group">
+                <label>Filtrar por Empreendimento</label>
+                <select id="filterEmpUnidades" class="form-control" onchange="filterUnidades(this.value)">
+                    <option value="">Todos</option>
+                    {% for e in empreendimentos %}
+                    <option value="{{ e.id }}">{{ e.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table id="tabelaUnidades">
+                <thead>
+                    <tr>
+                        <th>Unidade</th>
+                        <th>Bloco</th>
+                        <th>Area Cob.</th>
+                        <th>Area Desc.</th>
+                        <th>R$/m2</th>
+                        <th>Coef.</th>
+                        <th>Valor Total</th>
+                        <th>Status</th>
+                        <th>Acoes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for e in empreendimentos %}
+                    {% for bloco in e.blocos %}
+                        {% for u in bloco.unidades %}
+                        <tr data-emp="{{ e.id }}">
+                            <td><strong>{{ u.numero }}</strong><br><small class="text-muted">{{ u.descricao or '' }}</small></td>
+                            <td>{{ bloco.nome }}</td>
+                            <td>{{ '%.2f'|format(u.area_coberta) }}</td>
+                            <td>{{ '%.2f'|format(u.area_descoberta) }}</td>
+                            <td>{{ format_brl(u.preco_m2) }}</td>
+                            <td>{{ u.coef_area_descoberta }}</td>
+                            <td><strong>{{ format_brl(u.valor_total) }}</strong></td>
+                            <td><span class="badge status-{{ u.status }}">{{ u.status }}</span></td>
+                            <td>
+                                <button class="btn btn-secondary btn-sm" onclick="openEditUnidade({{ u.id }}, '{{ u.numero }}', '{{ u.descricao or '' }}', {{ u.area_coberta }}, {{ u.area_descoberta }}, {{ u.preco_m2 }}, {{ u.coef_area_descoberta }}, '{{ u.status }}')">Editar</button>
+                                <form method="POST" action="{{ url_for('adm_bp.excluir_unidade', id=u.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Excluir unidade?')">X</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% endfor %}
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- TAB: PLANO PADRAO -->
+<div class="tab-content" data-tab-content="plano">
+    <div class="card">
+        <div class="card-header"><h3>Plano Padrao por Empreendimento</h3></div>
+        <div class="card-body">
+            <div class="form-group">
+                <label>Empreendimento</label>
+                <select id="planoEmpSelect" class="form-control" onchange="loadPlanoPadrao(this.value)">
+                    <option value="">Selecione...</option>
+                    {% for e in empreendimentos %}
+                    <option value="{{ e.id }}">{{ e.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <form method="POST" id="formPlanoPadrao" style="display:none;">
+                <div class="section-title mt-2">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
+                    Configuracao do Plano (em % do valor da unidade)
+                </div>
+
+                <div class="form-row form-row-3">
+                    <div class="form-group">
+                        <label>Sinal - Qtd Parcelas</label>
+                        <input type="number" name="sinal_qtd" id="pp_sinal_qtd" class="form-control" value="1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Sinal - % do Valor</label>
+                        <input type="number" name="sinal_pct" id="pp_sinal_pct" class="form-control" value="10" step="0.1" min="0">
+                    </div>
+                    <div></div>
+                </div>
+
+                <div class="form-row form-row-3">
+                    <div class="form-group">
+                        <label>Mensal - Qtd Parcelas</label>
+                        <input type="number" name="mensal_qtd" id="pp_mensal_qtd" class="form-control" value="24" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Mensal - % do Valor</label>
+                        <input type="number" name="mensal_pct" id="pp_mensal_pct" class="form-control" value="10" step="0.1" min="0">
+                    </div>
+                    <div></div>
+                </div>
+
+                <div class="form-row form-row-3">
+                    <div class="form-group">
+                        <label>Intermediaria - Qtd</label>
+                        <input type="number" name="intermediaria_qtd" id="pp_inter_qtd" class="form-control" value="2" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Intermediaria - % do Valor</label>
+                        <input type="number" name="intermediaria_pct" id="pp_inter_pct" class="form-control" value="10" step="0.1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Periodicidade</label>
+                        <select name="intermediaria_periodicidade" id="pp_inter_per" class="form-control">
+                            <option value="M">Mensal</option>
+                            <option value="B">Bimestral</option>
+                            <option value="T">Trimestral</option>
+                            <option value="S" selected>Semestral</option>
+                            <option value="A">Anual</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Chave - % do Valor</label>
+                        <input type="number" name="chave_pct" id="pp_chave_pct" class="form-control" value="10" step="0.1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Financiamento - % do Valor</label>
+                        <input type="number" name="financiamento_pct" id="pp_financ_pct" class="form-control" value="60" step="0.1" min="0">
+                    </div>
+                </div>
+
+                <div class="d-flex align-center justify-between mt-2">
+                    <span id="ppTotal" class="fw-bold"></span>
+                    <button type="submit" class="btn btn-primary">Salvar Plano Padrao</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- TAB: REGRAS -->
+<div class="tab-content" data-tab-content="regras">
+    <div class="card">
+        <div class="card-header"><h3>Regras por Empreendimento</h3></div>
+        <div class="card-body">
+            <div class="form-group">
+                <label>Empreendimento</label>
+                <select id="regrasEmpSelect" class="form-control" onchange="loadRegras(this.value)">
+                    <option value="">Selecione...</option>
+                    {% for e in empreendimentos %}
+                    <option value="{{ e.id }}">{{ e.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <form method="POST" id="formRegras" style="display:none;">
+                <div class="section-title mt-2">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    Limites e Restricoes
+                </div>
+
+                <div class="form-row form-row-3">
+                    <div class="form-group">
+                        <label>% Min. Sinal</label>
+                        <input type="number" name="pct_min_sinal" id="rg_pct_min_sinal" class="form-control" value="5" step="0.1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>% Min. Mensais</label>
+                        <input type="number" name="pct_min_mensal" id="rg_pct_min_mensal" class="form-control" value="5" step="0.1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Qtd Max. Parcelas Mensais</label>
+                        <input type="number" name="qtd_max_mensal" id="rg_qtd_max_mensal" class="form-control" value="48" min="0">
+                    </div>
+                </div>
+
+                <div class="form-row form-row-3">
+                    <div class="form-group">
+                        <label>% Min. Financiamento</label>
+                        <input type="number" name="pct_min_financiamento" id="rg_pct_min_fin" class="form-control" value="0" step="0.1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>% Max. Financiamento</label>
+                        <input type="number" name="pct_max_financiamento" id="rg_pct_max_fin" class="form-control" value="80" step="0.1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Valor Max. Parcela Chave (R$)</label>
+                        <input type="number" name="valor_max_chave" id="rg_valor_max_chave" class="form-control" value="0" step="0.01" min="0">
+                        <small class="text-muted">0 = sem limite</small>
+                    </div>
+                </div>
+
+                <div class="section-title mt-2">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                    Parcelas Intermediarias (Quantidade Maxima)
+                </div>
+
+                <div class="form-row form-row-4">
+                    <div class="form-group">
+                        <label>Bimestrais</label>
+                        <input type="number" name="qtd_max_bimestrais" id="rg_qtd_bim" class="form-control" value="0" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Trimestrais</label>
+                        <input type="number" name="qtd_max_trimestrais" id="rg_qtd_tri" class="form-control" value="0" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Semestrais</label>
+                        <input type="number" name="qtd_max_semestrais" id="rg_qtd_sem" class="form-control" value="0" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Anuais</label>
+                        <input type="number" name="qtd_max_anuais" id="rg_qtd_anu" class="form-control" value="0" min="0">
+                    </div>
+                </div>
+
+                <div class="mt-2">
+                    <button type="submit" class="btn btn-primary">Salvar Regras</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- TAB: USUARIOS -->
+<div class="tab-content" data-tab-content="usuarios">
+    <div class="d-flex align-center justify-between mb-2">
+        <h3>Usuarios Cadastrados</h3>
+        <a href="{{ url_for('login_bp.cadastro') }}" class="btn btn-primary btn-sm">Novo Usuario</a>
+    </div>
+    <div class="card">
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr><th>Nome</th><th>Email</th><th>Nivel</th><th>Empresa</th><th>Status</th><th>Acoes</th></tr>
+                </thead>
+                <tbody>
+                {% for u in usuarios %}
+                    <tr>
+                        <td><strong>{{ u.nome }}</strong></td>
+                        <td>{{ u.email }}</td>
+                        <td><span class="badge badge-info">{{ u.role }}</span></td>
+                        <td>{{ u.empresa.nome }}</td>
+                        <td><span class="badge {{ 'badge-success' if u.ativo else 'badge-danger' }}">{{ 'Ativo' if u.ativo else 'Inativo' }}</span></td>
+                        <td>
+                            {% if u.id != current_user.id %}
+                            <button class="btn btn-secondary btn-sm" onclick="openEditUsuario({{ u.id }}, '{{ u.nome }}', '{{ u.email }}', '{{ u.role }}', {{ u.empresa_id }})">Editar</button>
+                            <form method="POST" action="{{ url_for('adm_bp.toggle_usuario', id=u.id) }}" style="display:inline;">
+                                <button type="submit" class="btn btn-sm {{ 'btn-warning' if u.ativo else 'btn-success' }}">
+                                    {{ 'Desativar' if u.ativo else 'Ativar' }}
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('adm_bp.reset_senha', id=u.id) }}" style="display:inline;">
+                                <input type="hidden" name="nova_senha" value="123456">
+                                <button type="submit" class="btn btn-secondary btn-sm" onclick="return confirm('Resetar senha para 123456?')">Reset Senha</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Editar Empresa -->
+<div class="modal-overlay" id="modalEditEmpresa">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Editar Empresa</h3>
+            <button class="alert-close" onclick="closeModal('modalEditEmpresa')">&times;</button>
+        </div>
+        <form method="POST" id="formEditEmpresa">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" name="nome" id="editEmpNome" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>CNPJ</label>
+                    <input type="text" name="cnpj" id="editEmpCnpj" class="form-control">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modalEditEmpresa')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: Editar Empreendimento -->
+<div class="modal-overlay" id="modalEditEmpreendimento">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Editar Empreendimento</h3>
+            <button class="alert-close" onclick="closeModal('modalEditEmpreendimento')">&times;</button>
+        </div>
+        <form method="POST" id="formEditEmpreendimento">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" name="nome" id="editEmpNomeE" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Endereco</label>
+                    <input type="text" name="endereco" id="editEmpEnderecoE" class="form-control">
+                </div>
+                {% if current_user.is_admin %}
+                <div class="form-group">
+                    <label>Empresa</label>
+                    <select name="empresa_id" id="editEmpEmpresaE" class="form-control">
+                        {% for emp in empresas %}
+                        <option value="{{ emp.id }}">{{ emp.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                <div class="form-group">
+                    <label>Taxa Desconto Mensal</label>
+                    <input type="number" name="taxa_desconto_mensal" id="editEmpTaxaE" class="form-control" step="0.001" min="0">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modalEditEmpreendimento')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: Editar Unidade -->
+<div class="modal-overlay" id="modalEditUnidade">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Editar Unidade</h3>
+            <button class="alert-close" onclick="closeModal('modalEditUnidade')">&times;</button>
+        </div>
+        <form method="POST" id="formEditUnidade">
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Numero</label>
+                        <input type="text" name="numero" id="editUniNumero" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Descricao</label>
+                        <input type="text" name="descricao" id="editUniDescricao" class="form-control">
+                    </div>
+                </div>
+                <div class="form-row form-row-4">
+                    <div class="form-group">
+                        <label>Area Coberta</label>
+                        <input type="number" name="area_coberta" id="editUniAreaCob" class="form-control" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Area Descoberta</label>
+                        <input type="number" name="area_descoberta" id="editUniAreaDesc" class="form-control" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Preco/m2</label>
+                        <input type="number" name="preco_m2" id="editUniPreco" class="form-control" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Coef.</label>
+                        <input type="number" name="coef_area_descoberta" id="editUniCoef" class="form-control" step="0.01">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select name="status" id="editUniStatus" class="form-control">
+                        <option value="disponivel">Disponivel</option>
+                        <option value="reservada">Reservada</option>
+                        <option value="vendida">Vendida</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modalEditUnidade')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: Editar Usuario -->
+<div class="modal-overlay" id="modalEditUsuario">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Editar Usuario</h3>
+            <button class="alert-close" onclick="closeModal('modalEditUsuario')">&times;</button>
+        </div>
+        <form method="POST" id="formEditUsuario">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" name="nome" id="editUsrNome" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" id="editUsrEmail" class="form-control" required>
+                </div>
+                {% if current_user.is_admin %}
+                <div class="form-group">
+                    <label>Nivel</label>
+                    <select name="role" id="editUsrRole" class="form-control">
+                        <option value="corretor">Corretor</option>
+                        <option value="lider">Lider</option>
+                        <option value="adm">Admin</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Empresa</label>
+                    <select name="empresa_id" id="editUsrEmpresa" class="form-control">
+                        {% for emp in empresas %}
+                        <option value="{{ emp.id }}">{{ emp.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modalEditUsuario')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── MODAL HELPERS ──
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function(e) {
+        if (e.target === this) closeModal(this.id);
+    });
+});
+
+// ── EDIT EMPRESA ──
+function openEditEmpresa(id, nome, cnpj) {
+    document.getElementById('editEmpNome').value = nome;
+    document.getElementById('editEmpCnpj').value = cnpj;
+    document.getElementById('formEditEmpresa').action = '/admin/empresas/' + id + '/editar';
+    openModal('modalEditEmpresa');
+}
+
+// ── EDIT EMPREENDIMENTO ──
+function openEditEmpreendimento(id, nome, endereco, empresaId, taxa) {
+    document.getElementById('editEmpNomeE').value = nome;
+    document.getElementById('editEmpEnderecoE').value = endereco;
+    document.getElementById('editEmpTaxaE').value = taxa;
+    var selEmpresa = document.getElementById('editEmpEmpresaE');
+    if (selEmpresa) selEmpresa.value = empresaId;
+    document.getElementById('formEditEmpreendimento').action = '/admin/empreendimentos/' + id + '/editar';
+    openModal('modalEditEmpreendimento');
+}
+
+// ── EDIT UNIDADE ──
+function openEditUnidade(id, numero, descricao, areaCob, areaDesc, preco, coef, status) {
+    document.getElementById('editUniNumero').value = numero;
+    document.getElementById('editUniDescricao').value = descricao;
+    document.getElementById('editUniAreaCob').value = areaCob;
+    document.getElementById('editUniAreaDesc').value = areaDesc;
+    document.getElementById('editUniPreco').value = preco;
+    document.getElementById('editUniCoef').value = coef;
+    document.getElementById('editUniStatus').value = status;
+    document.getElementById('formEditUnidade').action = '/admin/unidades/' + id + '/editar';
+    openModal('modalEditUnidade');
+}
+
+// ── EDIT USUARIO ──
+function openEditUsuario(id, nome, email, role, empresaId) {
+    document.getElementById('editUsrNome').value = nome;
+    document.getElementById('editUsrEmail').value = email;
+    var selRole = document.getElementById('editUsrRole');
+    if (selRole) selRole.value = role;
+    var selEmpresa = document.getElementById('editUsrEmpresa');
+    if (selEmpresa) selEmpresa.value = empresaId;
+    document.getElementById('formEditUsuario').action = '/admin/usuarios/' + id + '/editar';
+    openModal('modalEditUsuario');
+}
+
+// ── FORM ACTIONS (dynamic) ──
+document.getElementById('formBloco').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const empId = document.getElementById('blocoEmpSelect').value;
+    if (!empId) { alert('Selecione um empreendimento'); return; }
+    this.action = '/admin/empreendimentos/' + empId + '/blocos';
+    this.submit();
+});
+
+document.getElementById('formUnidade').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const blocoId = document.getElementById('unidBlocoSelect').value;
+    if (!blocoId) { alert('Selecione um bloco'); return; }
+    this.action = '/admin/blocos/' + blocoId + '/unidades';
+    this.submit();
+});
+
+document.getElementById('formUnidadeLote').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const blocoId = document.getElementById('loteBlocoSelect').value;
+    if (!blocoId) { alert('Selecione um bloco'); return; }
+    this.action = '/admin/blocos/' + blocoId + '/unidades/lote';
+    this.submit();
+});
+
+document.getElementById('formUnidadeCSV').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const blocoId = document.getElementById('csvBlocoSelect').value;
+    if (!blocoId) { alert('Selecione um bloco'); return; }
+    this.action = '/admin/blocos/' + blocoId + '/unidades/csv';
+    this.submit();
+});
+
+// ── LOAD BLOCOS ──
+async function loadBlocosAdmin(empId) {
+    const sel = document.getElementById('unidBlocoSelect');
+    sel.innerHTML = '<option value="">Carregando...</option>';
+    if (!empId) { sel.innerHTML = '<option value="">Selecione empreendimento primeiro</option>'; return; }
+    try {
+        const data = await fetchAPI('/api/empreendimentos/' + empId + '/blocos');
+        sel.innerHTML = '<option value="">Selecione...</option>';
+        data.forEach(b => { sel.innerHTML += '<option value="' + b.id + '">' + b.nome + '</option>'; });
+    } catch(e) { sel.innerHTML = '<option value="">Erro ao carregar</option>'; }
+}
+
+async function loadBlocosLote(empId) {
+    const sel = document.getElementById('loteBlocoSelect');
+    sel.innerHTML = '<option value="">Carregando...</option>';
+    if (!empId) { sel.innerHTML = '<option value="">Selecione empreendimento primeiro</option>'; return; }
+    try {
+        const data = await fetchAPI('/api/empreendimentos/' + empId + '/blocos');
+        sel.innerHTML = '<option value="">Selecione...</option>';
+        data.forEach(b => { sel.innerHTML += '<option value="' + b.id + '">' + b.nome + '</option>'; });
+    } catch(e) { sel.innerHTML = '<option value="">Erro ao carregar</option>'; }
+}
+
+async function loadBlocosCSV(empId) {
+    const sel = document.getElementById('csvBlocoSelect');
+    sel.innerHTML = '<option value="">Carregando...</option>';
+    if (!empId) { sel.innerHTML = '<option value="">Selecione empreendimento primeiro</option>'; return; }
+    try {
+        const data = await fetchAPI('/api/empreendimentos/' + empId + '/blocos');
+        sel.innerHTML = '<option value="">Selecione...</option>';
+        data.forEach(b => { sel.innerHTML += '<option value="' + b.id + '">' + b.nome + '</option>'; });
+    } catch(e) { sel.innerHTML = '<option value="">Erro ao carregar</option>'; }
+}
+
+function downloadCSVModelo() {
+    const header = 'numero;descricao;area_coberta;area_descoberta;preco_m2;coef_area_descoberta';
+    const exemplo1 = '101;Apto 2Q Suite;55.00;8.00;6500.00;0.5';
+    const exemplo2 = '102;Apto 3Q Garden;70.00;15.00;7200.00;0.5';
+    const csv = header + '\n' + exemplo1 + '\n' + exemplo2 + '\n';
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'modelo_unidades.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ── FILTER UNIDADES ──
+function filterUnidades(empId) {
+    document.querySelectorAll('#tabelaUnidades tbody tr').forEach(tr => {
+        tr.style.display = (!empId || tr.dataset.emp === empId) ? '' : 'none';
+    });
+}
+
+// ── PLANO PADRAO ──
+async function loadPlanoPadrao(empId) {
+    const form = document.getElementById('formPlanoPadrao');
+    if (!empId) { form.style.display = 'none'; return; }
+    form.style.display = 'block';
+    form.action = '/admin/empreendimentos/' + empId + '/plano-padrao';
+    try {
+        const data = await fetchAPI('/api/empreendimentos/' + empId + '/plano-padrao');
+        document.getElementById('pp_sinal_qtd').value = data.sinal_qtd || 1;
+        document.getElementById('pp_sinal_pct').value = data.sinal_pct || 10;
+        document.getElementById('pp_mensal_qtd').value = data.mensal_qtd || 24;
+        document.getElementById('pp_mensal_pct').value = data.mensal_pct || 10;
+        document.getElementById('pp_inter_qtd').value = data.intermediaria_qtd || 2;
+        document.getElementById('pp_inter_pct').value = data.intermediaria_pct || 10;
+        document.getElementById('pp_inter_per').value = data.intermediaria_periodicidade || 'S';
+        document.getElementById('pp_chave_pct').value = data.chave_pct || 10;
+        document.getElementById('pp_financ_pct').value = data.financiamento_pct || 60;
+        updatePPTotal();
+    } catch(e) { console.error(e); }
+}
+
+function updatePPTotal() {
+    const total = ['pp_sinal_pct', 'pp_mensal_pct', 'pp_inter_pct', 'pp_chave_pct', 'pp_financ_pct']
+        .reduce((sum, id) => sum + (parseFloat(document.getElementById(id).value) || 0), 0);
+    const el = document.getElementById('ppTotal');
+    el.textContent = 'Total: ' + total.toFixed(1) + '%';
+    el.style.color = Math.abs(total - 100) < 0.1 ? 'var(--success)' : 'var(--danger)';
+}
+
+document.querySelectorAll('#formPlanoPadrao input[type="number"]').forEach(input => {
+    input.addEventListener('input', updatePPTotal);
+});
+
+// ── REGRAS ──
+async function loadRegras(empId) {
+    const form = document.getElementById('formRegras');
+    if (!empId) { form.style.display = 'none'; return; }
+    form.style.display = 'block';
+    form.action = '/admin/empreendimentos/' + empId + '/regras';
+    try {
+        const data = await fetchAPI('/admin/api/empreendimentos/' + empId + '/regras');
+        document.getElementById('rg_pct_min_sinal').value = data.pct_min_sinal;
+        document.getElementById('rg_pct_min_mensal').value = data.pct_min_mensal;
+        document.getElementById('rg_qtd_max_mensal').value = data.qtd_max_mensal;
+        document.getElementById('rg_pct_min_fin').value = data.pct_min_financiamento;
+        document.getElementById('rg_pct_max_fin').value = data.pct_max_financiamento;
+        document.getElementById('rg_valor_max_chave').value = data.valor_max_chave;
+        document.getElementById('rg_qtd_bim').value = data.qtd_max_bimestrais;
+        document.getElementById('rg_qtd_tri').value = data.qtd_max_trimestrais;
+        document.getElementById('rg_qtd_sem').value = data.qtd_max_semestrais;
+        document.getElementById('rg_qtd_anu').value = data.qtd_max_anuais;
+    } catch(e) { console.error(e); }
+}
+</script>
+{% endblock %}

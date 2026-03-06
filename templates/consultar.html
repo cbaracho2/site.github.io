@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Minhas Simulacoes{% endblock %}
+
+{% block content %}
+<div class="d-flex align-center justify-between mb-2">
+    <h1>Consultar Simulacoes</h1>
+    <a href="{{ url_for('emp_bp.simulador') }}" class="btn btn-primary btn-sm">Nova Simulacao</a>
+</div>
+
+{% if simulacoes %}
+<div class="card">
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Codigo</th>
+                    <th>Empreendimento</th>
+                    <th>Unidade</th>
+                    <th>Cliente</th>
+                    <th>VP Proposta</th>
+                    <th>Status</th>
+                    <th>Data</th>
+                    <th>Acao</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for s in simulacoes %}
+                <tr>
+                    <td><strong>{{ s.codigo }}</strong></td>
+                    <td>{{ s.empreendimento.nome }}</td>
+                    <td>{{ s.unidade.bloco.nome }} - {{ s.unidade.numero }}</td>
+                    <td>{{ s.cliente_nome or '-' }}</td>
+                    <td>{{ format_brl(s.vp_proposta) }}</td>
+                    <td><span class="badge status-{{ s.status }}">{{ s.status }}</span></td>
+                    <td>{{ s.created_at.strftime('%d/%m/%Y') }}</td>
+                    <td>
+                        <a href="{{ url_for('emp_bp.report', id=s.id) }}" class="btn btn-primary btn-sm">Ver</a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <p>Nenhuma simulacao encontrada.</p>
+        <a href="{{ url_for('emp_bp.simulador') }}" class="btn btn-primary mt-2">Criar Primeira Simulacao</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

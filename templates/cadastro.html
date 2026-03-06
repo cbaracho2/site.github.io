@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Cadastro de Usuario{% endblock %}
+
+{% block content %}
+<div class="d-flex align-center justify-between mb-2">
+    <h1>Novo Usuario</h1>
+</div>
+
+<div class="card" style="max-width: 600px;">
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('login_bp.cadastro') }}">
+            <div class="form-group">
+                <label for="nome">Nome Completo</label>
+                <input type="text" id="nome" name="nome" class="form-control" placeholder="Nome do usuario" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" class="form-control" placeholder="email@exemplo.com" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" name="password" class="form-control" placeholder="Senha" required minlength="6">
+            </div>
+            {% if current_user.is_admin %}
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="role">Nivel de Acesso</label>
+                    <select id="role" name="role" class="form-control">
+                        <option value="corretor">Corretor</option>
+                        <option value="lider">Lider</option>
+                        <option value="adm">Administrador</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="empresa_id">Empresa</label>
+                    <select id="empresa_id" name="empresa_id" class="form-control" required>
+                        <option value="">Selecione...</option>
+                        {% for emp in empresas %}
+                        <option value="{{ emp.id }}">{{ emp.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            {% endif %}
+            <div class="btn-group mt-2">
+                <button type="submit" class="btn btn-primary">Cadastrar</button>
+                <a href="{{ url_for('adm_bp.dashboard') if current_user.is_admin else url_for('emp_bp.simulador') }}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

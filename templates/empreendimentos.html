@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}Simulador{% endblock %}
+
+{% block content %}
+<h1 class="mb-2">{{ 'Editar Simulacao' if editando else 'Nova Simulacao' }}</h1>
+
+<form method="POST" action="{{ url_for('emp_bp.editar_simulacao', id=editando.id) if editando else url_for('emp_bp.salvar_simulacao') }}" id="formSimulador">
+    <!-- Hidden fields -->
+    <input type="hidden" name="empreendimento_id" id="empreendimento_id" value="{{ editando.empreendimento_id if editando else '' }}">
+    <input type="hidden" name="unidade_id" id="unidade_id" value="{{ editando.unidade_id if editando else '' }}">
+
+    <!-- ═══ SELECT: EMPREENDIMENTO > BLOCO > UNIDADE ═══ -->
+    <div class="card mb-2">
+        <div class="card-header">
+            <h3>Selecionar Unidade</h3>
+        </div>
+        <div class="card-body">
+            <div class="form-row form-row-3">
+                <div class="form-group">
+                    <label>Empreendimento</label>
+                    <select id="selEmpreendimento" class="form-control" required>
+                        <option value="">Selecione...</option>
+                        {% for e in empreendimentos %}
+                        <option value="{{ e.id }}" {{ 'selected' if editando and editando.empreendimento_id == e.id }}>{{ e.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Bloco</label>
+                    <select id="selBloco" class="form-control" required>
+                        <option value="">Selecione empreendimento</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Unidade</label>
+                    <select id="selUnidade" class="form-control" required>
+                        <option value="">Selecione bloco</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Unit Detail Card -->
+            <div id="unitCard" class="unit-card hidden">
+                <div class="unit-title" id="unitTitle"></div>
+                <div class="unit-grid">
+                    <div class="unit-item">
+                        <label>Area Coberta</label>
+                        <div class="value" id="unitAreaCob">-</div>
+                    </div>
+                    <div class="unit-item">
+                        <label>Area Descoberta</label>
+                        <div class="value" id="unitAreaDesc">-</div>
+                    </div>
+                    <div class="unit-item">
+                        <label>Preco/m2</label>
+                        <div class="value" id="unitPrecoM2">-</div>
+                    </div>
+                    <div class="unit-item">
+                        <label>Coef. Area Desc.</label>
+                        <div class="value" id="unitCoef">-</div>
+                    </div>
+                </div>
+                <div class="unit-total">
+                    <label>Valor Total da Unidade</label>
+                    <div class="price" id="unitValorTotal">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ CLIENTE ═══ -->
+    <div class="card mb-2">
+        <div class="card-header"><h3>Dados do Cliente</h3></div>
+        <div class="card-body">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nome do Cliente</label>
+                    <input type="text" name="cliente_nome" class="form-control" placeholder="Nome" value="{{ editando.cliente_nome or '' if editando else '' }}">
+                </div>
+                <div class="form-group">
+                    <label>Telefone</label>
+                    <input type="text" name="cliente_telefone" class="form-control" placeholder="(00) 00000-0000" value="{{ editando.cliente_telefone or '' if editando else '' }}">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ PLANO DE PAGAMENTO ═══ -->
+    <div class="card mb-2">
+        <div class="card-header"><h3>Plano de Pagamento</h3></div>
+        <div class="card-body">
+
+            <!-- SINAL -->
+            <div class="section-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                Sinal
+            </div>
+            <div class="form-row form-row-3">
+                <div class="form-group">
+                    <label>Quantidade</label>
+                    <input type="number" name="sinal_qtd" class="form-control plan-input" min="0" value="{{ editando.sinal_qtd if editando else 0 }}">
+                </div>
+                <div class="form-group">
+                    <label>Valor (R$)</label>
+                    <input type="number" name="sinal_valor" class="form-control plan-input" min="0" step="0.01" value="{{ editando.sinal_valor if editando else 0 }}">
+                </div>
+                <div class="form-group">
+                    <label>Data Inicio</label>
+                    <input type="date" name="sinal_data_inicio" class="form-control" value="{{ editando.sinal_data_inicio.isoformat() if editando and editando.sinal_data_inicio else '' }}">
+                </div>
+            </div>
+
+            <!-- MENSAL -->
+            <div class="section-title mt-2">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                Mensal
+            </div>
+            <div class="form-row form-row-3">
+                <div class="form-group">
+                    <label>Quantidade</label>
+                    <input type="number" name="mensal_qtd" class="form-control plan-input" min="0" value="{{ editando.mensal_qtd if editando else 0 }}">
+                </div>
+                <div class="form-group">
+                    <label>Valor (R$)</label>
+                    <input type="number" name="mensal_valor" class="form-control plan-input" min="0" step="0.01" value="{{ editando.mensal_valor if editando else 0 }}">
+                </div>
+                <div class="form-group">
+                    <label>Data Inicio</label>
+                    <input type="date" name="mensal_data_inicio" class="form-control" value="{{ editando.mensal_data_inicio.isoformat() if editando and editando.mensal_data_inicio else '' }}">
+                </div>
+            </div>
+
+            <!-- INTERMEDIARIA -->
+            <div class="section-title mt-2">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                Intermediaria
+            </div>
+            <div class="form-row form-row-4">
+                <div class="form-group">
+                    <label>Quantidade</label>
+                    <input type="number" name="intermediaria_qtd" class="form-control plan-input" min="0" value="{{ editando.intermediaria_qtd if editando else 0 }}">
+                </div>
+                <div class="form-group">
+                    <label>Valor (R$)</label>
+                    <input type="number" name="intermediaria_valor" class="form-control plan-input" min="0" step="0.01" value="{{ editando.intermediaria_valor if editando else 0 }}">
+                </div>
+                <div class="form-group">
+                    <label>Data Inicio</label>
+                    <input type="date" name="intermediaria_data_inicio" class="form-control" value="{{ editando.intermediaria_data_inicio.isoformat() if editando and editando.intermediaria_data_inicio else '' }}">
+                </div>
+                <div class="form-group">
+                    <label>Periodicidade</label>
+                    <select name="intermediaria_periodicidade" class="form-control">
+                        {% set per = editando.intermediaria_periodicidade if editando else 'S' %}
+                        <option value="M" {{ 'selected' if per == 'M' }}>Mensal</option>
+                        <option value="B" {{ 'selected' if per == 'B' }}>Bimestral</option>
+                        <option value="T" {{ 'selected' if per == 'T' }}>Trimestral</option>
+                        <option value="S" {{ 'selected' if per == 'S' }}>Semestral</option>
+                        <option value="A" {{ 'selected' if per == 'A' }}>Anual</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- CHAVE -->
+            <div class="section-title mt-2">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.78 7.78 5.5 5.5 0 017.78-7.78zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                Chave
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Valor (R$)</label>
+                    <input type="number" name="chave_valor" class="form-control plan-input" min="0" step="0.01" value="{{ editando.chave_valor if editando else 0 }}">
+                </div>
+                <div class="form-group">
+                    <label>Data</label>
+                    <input type="date" name="chave_data" class="form-control" value="{{ editando.chave_data.isoformat() if editando and editando.chave_data else '' }}">
+                </div>
+            </div>
+
+            <!-- FINANCIAMENTO -->
+            <div class="section-title mt-2">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+                Financiamento
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Valor (R$)</label>
+                    <input type="number" name="financiamento_valor" class="form-control plan-input" min="0" step="0.01" value="{{ editando.financiamento_valor if editando else 0 }}">
+                </div>
+                <div class="form-group">
+                    <label>Data</label>
+                    <input type="date" name="financiamento_data" class="form-control" value="{{ editando.financiamento_data.isoformat() if editando and editando.financiamento_data else '' }}">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ RESULT PREVIEW ═══ -->
+    <div id="resultPreview" class="card mb-2 hidden">
+        <div class="card-header"><h3>Resultado VP</h3></div>
+        <div class="card-body">
+            <div class="table-responsive comparison-table">
+                <table>
+                    <thead>
+                        <tr><th class="label-col"></th><th>Tabela</th><th>Proposta</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="label-col">Valor Nominal</td>
+                            <td id="vpNomTabela">-</td>
+                            <td id="vpNomProposta">-</td>
+                        </tr>
+                        <tr>
+                            <td class="label-col">Valor Presente (VP)</td>
+                            <td id="vpTabela">-</td>
+                            <td id="vpProposta">-</td>
+                        </tr>
+                        <tr>
+                            <td class="label-col">Diferenca (%)</td>
+                            <td id="vpDifTabela">-</td>
+                            <td id="vpDifProposta">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ ACTIONS ═══ -->
+    <div class="btn-group">
+        <button type="button" class="btn btn-secondary" id="btnCalcular">Calcular VP</button>
+        <button type="submit" class="btn btn-primary btn-lg">
+            {{ 'Atualizar Simulacao' if editando else 'Salvar Simulacao' }}
+        </button>
+    </div>
+</form>
+
+<!-- Sticky Total Bar -->
+<div class="sticky-total" id="stickyTotal" style="display:none;">
+    <div>
+        <div class="total-label">Total Proposta</div>
+        <div class="total-value" id="stickyTotalValue">R$ 0,00</div>
+    </div>
+    <div class="text-right">
+        <div class="total-label">Valor Unidade</div>
+        <div class="total-value" id="stickyUnitValue" style="font-size:1rem; color: #e2e8f0;">-</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/simulador.js') }}"></script>
+{% if editando %}
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+    // Pre-load cascading selects for editing
+    const empId = '{{ editando.empreendimento_id }}';
+    const blocoId = '{{ editando.unidade.bloco_id }}';
+    const unidadeId = '{{ editando.unidade_id }}';
+    await loadBlocos(empId, blocoId);
+    await loadUnidades(blocoId, unidadeId);
+    await loadUnidadeDetail(unidadeId);
+});
+</script>
+{% endif %}
+{% endblock %}
